@@ -25,7 +25,7 @@ public class SseController {
             // 1초 지연 후 종료 (클라이언트가 onopen을 처리할 시간 확보)
             new Thread(() -> {
                 try {
-                    for (int i = 1; i <= 10; i++) {
+                    for (int i = 10; i >= 0; i--) {
                         emitter.send(SseEmitter.event()
                             .name("message") // 일반 메시지 이벤트 이름
                             .data("보내는 데이터 " + i)

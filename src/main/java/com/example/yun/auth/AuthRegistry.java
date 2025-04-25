@@ -4,19 +4,18 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.Map;
 
-/** MACÁÖ¼Ò¿Í FingerPrint µî·Ï */
+/** MACï¿½Ö¼Ò¿ï¿½ FingerPrint ï¿½ï¿½ï¿½ */
 @Component
 public class AuthRegistry {
 
     private final Map<String,String> registeredMap  = new HashMap<>();
 
     public AuthRegistry(){
-        //MAC°ú FingerPrint
-        registeredMap.put("34-C9-3D-EB-B8-3C", "9ffef1292c7f55f874142ac1b69ff5ff");
+        //MACï¿½ï¿½ FingerPrint 34-C9-3D-EB-B8-3C ì§‘ 9ffef1292c7f55f874142ac1b69ff5ff
+        registeredMap.put("E4-C7-67-A4-B3-56", "adecbbb9ff684a06f01a7e8f24e4ff4b") ;
     }
 
     public boolean isRegistered(String mac,String fingerprint){
-        // mac ÁÖ¼Ò¿Í fingerprint °ª °¢°¢ °³º°ÀûÀ¸·Î ºñ±³
         return registeredMap.containsKey(mac) && registeredMap.get(mac).equals(fingerprint);
     }
     

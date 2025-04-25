@@ -14,55 +14,59 @@ import java.util.concurrent.ConcurrentHashMap;
 @CrossOrigin(origins = "http://localhost:3000")
 public class SseController {
 
-    // 모든 클라이언트의 세션 ID와 SseEmitter를 저장하는 맵
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
     @GetMapping(value = "/sse", produces = "text/event-stream")
     public SseEmitter handleSse(@RequestParam(name = "sessionId", required = false) String sessionIdParam) {
-        // sessionId가 없을 경우 기본값 설정
         final String sessionId = (sessionIdParam == null || sessionIdParam.isEmpty())
                 ? "unknown_" + System.currentTimeMillis()
                 : sessionIdParam;
 
-        final SseEmitter emitter = new SseEmitter(60_000L);
+        final SseEmitter emitter = new SseEmitter(0L);
         emitters.put(sessionId, emitter);
 
-        // 연결 시 현재 세션 수 브로드캐스트
+        System.out.println("🟢 연결됨: " + sessionId);
         broadcastSessionCount();
 
-        // 클라이언트에 데이터 전송 쓰레드
-        new Thread(() -> {
-            try {
-                for (int i = 5; i >= 0; i--) {
-                    emitter.send(SseEmitter.event()
-                            .name("message")
-                            .data("보내는 데이터 " + i)
-                            .id(String.valueOf(i)));
-                    Thread.sleep(1000);
-                }
+        // 연결 종료 시 처리
+        emitter.onCompletion(() -> {
+            System.out.println("⚫ 연결 종료: " + sessionId);
+            emitters.remove(sessionId);
+            broadcastSessionCount();
+        });
 
-                emitter.send(SseEmitter.event()
-                        .name("close")
-                        .data("정상 종료")
-                        .id("end"));
+        // 타임아웃 시 처리
+        emitter.onTimeout(() -> {
+            System.out.println("⏰ 타임아웃 발생: " + sessionId);
+            emitter.complete();
+            emitters.remove(sessionId);
+            broadcastSessionCount();
+        });
 
-                // emitter 종료
-                emitter.complete();
+        // 에러 발생 시 처리
+        emitter.onError(e -> {
+            System.out.println("❌ 에러 발생: " + sessionId);
+            emitter.completeWithError(e);
+            emitters.remove(sessionId);
+            broadcastSessionCount();
+        });
 
-            } catch (IOException | InterruptedException e) {
-                emitter.completeWithError(e);
-            } finally {
-                emitters.remove(sessionId); // 세션 제거
-                broadcastSessionCount();    // 모든 클라이언트에게 최신 세션 수 알림
-            }
-        }).start();
+        // 연결 확인 메시지 전송
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("message")
+                    .data("연결 성공: " + sessionId));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
         return emitter;
     }
 
-    // 모든 클라이언트에게 현재 세션 수 전송
+    // 모든 클라이언트에게 현재 세션 수 브로드캐스트
     private void broadcastSessionCount() {
         int sessionCount = emitters.size();
+        System.out.println("📢 현재 연결된 세션 수: " + sessionCount);
 
         for (Map.Entry<String, SseEmitter> entry : emitters.entrySet()) {
             try {

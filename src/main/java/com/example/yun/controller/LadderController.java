@@ -3,10 +3,12 @@ package com.example.yun.controller;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,6 +37,9 @@ public class LadderController {
     // 순차적인 방 번호를 위한 변수
     private int roomNumber = 1;
 
+ // 방마다 클라이언트 연결을 관리할 Map
+ private final Map<String, List<SseEmitter>> sseEmitters = new ConcurrentHashMap<>();
+
      // roomId와 당첨 레일을 반환하는 API
     @PostMapping(value ="/create/room") 
     public ResponseEntity<RoomResponse> checkConnection(@RequestBody RoomRequest roomRequest) {
@@ -45,8 +50,12 @@ public class LadderController {
     // 랜덤 당첨 레일 생성
     int winRailNo = (int) (Math.random() * roomRequest.getLanes()) + 1;
 
-     // 방 정보를 RoomInfo 객체에 저장
-    RoomInfo roomInfo = new RoomInfo(roomId, roomRequest.getLanes(), winRailNo,roomRequest.getNickname());
+    //방장을 참여자 리스트에 추가
+    List<String> Arra = new ArrayList<>();
+    Arra.add(roomRequest.getNickname());  
+
+
+    RoomInfo roomInfo = new RoomInfo(roomId, roomRequest.getLanes(), winRailNo, roomRequest.getNickname(),Arra);
 
      // Map에 방 정보 저장
      roomInfoMap.put(currentRoomNumber, roomInfo);
@@ -55,7 +64,7 @@ public class LadderController {
     for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
         Integer key = entry.getKey();
         RoomInfo value = entry.getValue();
-        System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ",총 레인 수 : " + value.getLanes() + ",당첨 레인:  " + value.getWinRailNo() + ", 호스트 닉네임 :  " + value.getHostId());
+        System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ",총 레인 수 : " + value.getLanes() + ",당첨 레인:  " + value.getWinRailNo() + ", 호스트 닉네임 :  " + value.getHostId() + ", 참여자 :  " +value.getParticipants());
     }   
 
     RoomResponse response = new RoomResponse(roomId,winRailNo);
@@ -63,6 +72,9 @@ public class LadderController {
     return ResponseEntity.ok(response);
     }
 
+    @PostMapping("join/room")
+
+    
      // 현재 시간 기반으로 방 ID 생성 (yyyyMMddHHmmss 형식)
     private String generateRoomId() {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMddHHmmss");
@@ -74,6 +86,8 @@ public class LadderController {
      public SseEmitter connect(@RequestParam(name = "roomId", required = true) String roomId) {
         logger.info("[SseController] SSE 연결 요청: roomId = {}", roomId);
         SseEmitter emitter = new SseEmitter(0L); // 임시 무제한 설정
+
+        
         logger.info("[SseController] SSE 연결 성공: 클라이언트에 '연결 성공!' 메시지를 보냈습니다.");
         try {
             emitter.send("SSE 연결 성공!");

@@ -1,5 +1,7 @@
 package com.example.yun.dto;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.Setter;
@@ -16,4 +18,11 @@ public class RoomInfo {
     private int winRailNo;
     //방장 아이디
     private String hostId;
+    // 참여자 목록 
+    private List<String> participants;  
+
+     // 참여자 추가 메서드
+     public void addParticipant(String nickname) {
+        participants.add(nickname);
+    }
 }

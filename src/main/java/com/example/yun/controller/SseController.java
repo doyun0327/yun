@@ -16,7 +16,7 @@ public class SseController {
 
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    @GetMapping(value = "/sse", produces = "text/event-stream")
+    @GetMapping(value = "/sse2", produces = "text/event-stream")
     public SseEmitter handleSse(@RequestParam(name = "sessionId", required = false) String sessionIdParam) {
         final String sessionId = (sessionIdParam == null || sessionIdParam.isEmpty())
                 ? "unknown_" + System.currentTimeMillis()

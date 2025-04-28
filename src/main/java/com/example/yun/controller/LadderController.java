@@ -46,13 +46,13 @@ public class LadderController {
     }
     
 
-
-    @GetMapping(value = "/sse/roomId", produces = "text/event-stream")    
-     public SseEmitter connect(@RequestParam("roomId") String roomId) {
+    @GetMapping(value = "/sse", produces = "text/event-stream")    
+     public SseEmitter connect(@RequestParam(name = "roomId", required = true) String roomId) {
+        logger.info("[SseController] SSE 연결 요청: roomId = {}", roomId);
         SseEmitter emitter = new SseEmitter(0L); // 임시 무제한 설정
         logger.info("[SseController] SSE 연결 성공: 클라이언트에 '연결 성공!' 메시지를 보냈습니다.");
         try {
-            emitter.send("연결 성공!");
+            emitter.send("SSE 연결 성공!");
         } catch (IOException e) {
             emitter.completeWithError(e);
         }

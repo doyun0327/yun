@@ -77,6 +77,32 @@ public class LadderController {
     return ResponseEntity.ok(response);
     }
 
+    // 참가자 등록
+    @PostMapping("/add/participants")
+    public String addParticipants(@RequestBody RoomRequest roomRequest) {
+        String roomId = roomRequest.getRoomId();
+        String nickname = roomRequest.getNickname();
+        // 방에 참여자 추가
+        RoomInfo roomInfo = null;
+        for (RoomInfo info : roomInfoMap.values()) {
+            if (info.getRoomId().equals(roomId)) {
+                roomInfo = info;
+                break;
+            }
+        }
+        roomInfo.getParticipants().add(nickname);
+
+        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+            Integer key = entry.getKey();
+            RoomInfo value = entry.getValue();
+            System.out.println("=============================");
+            System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
+        }  
+
+        return "참여자 등록 완료";
+    }
+    
+
     @PostMapping("join/room")
     public ResponseEntity<String> joinRoom(@RequestBody RoomRequest roomRequest) {
         // 방 ID와 참여자 닉네임을 가져옴

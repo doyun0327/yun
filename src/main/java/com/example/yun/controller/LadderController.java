@@ -181,7 +181,7 @@ public class LadderController {
     }
     
 
- // 클라이언트와 연결을 위한 SSE 엔드포인트
+     // 클라이언트와 연결을 위한 SSE 엔드포인트
     @GetMapping(value = "/sse", produces = "text/event-stream")
     public SseEmitter connect(@RequestParam(name = "roomId", required = true) String roomId) {
         logger.info("[SseController] SSE 연결 요청: roomId = {}", roomId);
@@ -216,19 +216,25 @@ public class LadderController {
         return emitter;
     }
 
-        // 방에 연결된 모든 클라이언트에게 메시지 브로드캐스트
-    private void broadcastMessageToRoom(String roomId, String message) {
+     // 방에 연결된 모든 클라이언트에게 메시지 브로드캐스트
+    private void broadcastMessageToRoom(String roomId, Object message) {
         List<SseEmitter> emitters = sseEmitters.get(roomId);
         if (emitters != null) {
             for (SseEmitter emitter : emitters) {
                 try {
-                    emitter.send(message);
+                    // 데이터 타입에 맞게 처리
+                    if (message instanceof String) {
+                        emitter.send(SseEmitter.event().name("message").data(message)); // 참가 메시지지,퇴장 메시지
+                    } else if (message instanceof Map) {
+                        emitter.send(SseEmitter.event().name("participants").data(message)); // 참가자 리스트
+                    }
                 } catch (IOException e) {
                     emitter.completeWithError(e);
                 }
             }
         }
     }
+
 
     @PostMapping("/send-message")
     public ResponseEntity<String> sendMessageToRoom(@RequestParam String roomId, @RequestParam String message) {
@@ -343,8 +349,7 @@ public class LadderController {
         return "레인 등록 완료";
     }
     
-    //방 정보 조회 API
-// 방 정보 조회 API (roomId로 특정 방 조회)
+    // 방 정보 조회 API (roomId로 특정 방 조회)
     @GetMapping("/search/rooms")
     public ResponseEntity<Map<String, Object>> getRoomById(@RequestParam("roomId") String roomId) {   
         for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
@@ -380,15 +385,60 @@ public class LadderController {
     }
 
     
+    @PostMapping("/leave/room")
+    public String leaveRoom(@RequestBody RoomRequest roomRequest) {
+    String roomId = roomRequest.getRoomId();
+    String nickname = roomRequest.getNickname();
+
+    RoomInfo roomInfo = null;
+    // 방을 찾음
+    for (RoomInfo info : roomInfoMap.values()) {
+        if (info.getRoomId().equals(roomId)) {
+            roomInfo = info;
+            break;
+        }
+    }
+
+    if (roomInfo != null) {
+        // 참가자 삭제
+        roomInfo.getParticipants().remove(nickname);
+
+        logger.info("[방 퇴장] {} 님이 방 {} 에서 나갔습니다.", nickname, roomId);
+
+        // 만약 참가자가 없으면 방 삭제
+        if (roomInfo.getParticipants().isEmpty()) {
+            roomInfoMap.values().removeIf(r -> r.getRoomId().equals(roomId));
+            logger.info("[방 삭제] {} 방 참가자 0명 -> 삭제", roomId);
+        }
+
+        // 퇴장한 사람을 알리는 메시지 준비
+        String leaveMessage = nickname + " 님이 퇴장하셨습니다 👋";
+
+        // 방에 연결된 모든 클라이언트에게 메시지 브로드캐스트
+        broadcastMessageToRoom(roomId, leaveMessage);
+
+        // 남은 사람들에게 업데이트 알림 (SSE)
+        List<Map<String, Object>> participantsList = new ArrayList<>();
+        for (Map.Entry<String, Integer> participant : roomInfo.getParticipants().entrySet()) {
+            Map<String, Object> participantData = new HashMap<>();
+            participantData.put("nickname", participant.getKey());
+            participantData.put("selectedLane", participant.getValue());
+            participantsList.add(participantData);
+        }
+
+        // roomId와 함께 participants 데이터를 보낼 준비
+        Map<String, Object> roomData = new HashMap<>();
+        roomData.put("roomId", roomInfo.getRoomId());
+        roomData.put("participants", participantsList);
+
+        // 남은 사람들에게 SSE로 업데이트된 참가자 리스트 전송
+        broadcastMessageToRoom(roomId, roomData);
+
+        return "방 퇴장 완료";
+    } else {
+        return "방을 찾을 수 없습니다.";
+    }
+}
     
 
-
-    //참가자 조회 API 요청 ROOMiD에 받고 그방에 속해있는 참가자 목록 리턴 
-    // @GetMapping("/room/{roomId}/participants")
-    // public List<> getParticipants(@PathVariable String roomId) {
-       
-    // }
-
-    // 퇴장알림 API
-    //  @PostMapping("/leave/room")
 }

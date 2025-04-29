@@ -47,7 +47,7 @@ public class LadderController {
     public ResponseEntity<RoomResponse> checkConnection(@RequestBody RoomRequest roomRequest) {
     int currentRoomNumber = roomNumber++;
      // 방 ID 생성
-    String roomId ="20250428163504";// generateRoomId();
+    String roomId =  generateRoomId(); //20250428163504
 
     // 랜덤 당첨 레일 생성
     int winRailNo = (int) (Math.random() * roomRequest.getLanes()) + 1;
@@ -291,17 +291,8 @@ public class LadderController {
 
             logger.info("[LadderController] JSON 응답: {}", jsonResponse);
 
-            // SSE로 해당 방에 관련된 클라이언트에 메시지 전송
-            List<SseEmitter> emitters = sseEmitters.get(roomId); // roomId에 해당하는 모든 클라이언트 가져오기
-            if (emitters != null) {
-                for (SseEmitter emitter : emitters) {
-                    try {
-                        emitter.send(SseEmitter.event().name("participants").data(jsonResponse)); // SSE 이벤트로 데이터 전송
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            }
+      
+            broadcastMessageToRoom(roomId, jsonResponse);
 
         return "레인 등록 완료";
     }

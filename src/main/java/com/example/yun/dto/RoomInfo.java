@@ -10,16 +10,18 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 public class RoomInfo {
-    //방 아이디디
+    //방 아이디
     private String roomId;
-    //전체 레인 수수
+    //전체 레인 수
     private int lanes;
-    //당첨된 레인 번호호
+    //당첨된 레인 번호
     private int winRailNo;
     //방장 아이디
     private String hostId;
     // 참여자 목록 
     private List<String> participants;  
+    // 방이름
+    private String roomName;
 
      // 참여자 추가 메서드
      public void addParticipant(String nickname) {

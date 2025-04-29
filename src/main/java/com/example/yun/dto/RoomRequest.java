@@ -10,7 +10,9 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 public class RoomRequest {
+    private String roomName; // 방이름
     private String nickname; // 닉네임
     private int lanes; // 총 레인 수 
     private String roomId; // 방 번호
+
 }

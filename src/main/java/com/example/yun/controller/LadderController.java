@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -44,7 +45,7 @@ public class LadderController {
      // roomId와 당첨 레일을 반환하는 API
     @PostMapping(value ="/create/room") 
     public ResponseEntity<RoomResponse> checkConnection(@RequestBody RoomRequest roomRequest) {
-   int currentRoomNumber = roomNumber++;
+e   int currentRoomNumber = roomNumber++;
      // 방 ID 생성
     String roomId ="20250428163504";// generateRoomId();
 
@@ -56,10 +57,19 @@ public class LadderController {
     Arra.add(roomRequest.getNickname());  
 
 
-    RoomInfo roomInfo = new RoomInfo(roomId, roomRequest.getLanes(), winRailNo, roomRequest.getNickname(),Arra);
+    RoomInfo roomInfo = new RoomInfo(roomId, roomRequest.getLanes(), winRailNo, roomRequest.getNickname(),Arra, roomRequest.getRoomName());
 
      // Map에 방 정보 저장
      roomInfoMap.put(currentRoomNumber, roomInfo);
+
+
+     ///room에 보낼 데이터
+     for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+        Integer key = entry.getKey();
+        RoomInfo value = entry.getValue();
+        System.out.println("=============================");
+        System.out.println("Key: " + key + ", 방아이디: " +"룸 네임 : "+value.getRoomName()+" 룸아이디 : "+ value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 수수 : " + value.getParticipants().size());
+    }  
 
 
     RoomResponse response = new RoomResponse(roomId,winRailNo);
@@ -180,11 +190,40 @@ public class LadderController {
     }
 
     // roomInfoMap에서 방 정보를 가져오는 API
-  @GetMapping("/rooms") 
-    public ResponseEntity<List<RoomInfo>> getRooms() {
-    // Map에 저장된 모든 방 정보 리스트로 반환
-    List<RoomInfo> roomList = new ArrayList<>(roomInfoMap.values());
-    return ResponseEntity.ok(roomList);
-}
+    // 
+    @GetMapping("/rooms")
+    public ResponseEntity<List<Map<String, Object>>> getRooms() {
+        List<Map<String, Object>> roomList = new ArrayList<>();
     
+        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+            RoomInfo value = entry.getValue();
+    
+            Map<String, Object> roomData = new HashMap<>();
+            roomData.put("roomId", value.getRoomId());
+            roomData.put("roomName", value.getRoomName());
+            roomData.put("lanes", value.getLanes());
+            roomData.put("attendeeCount", value.getParticipants().size());
+    
+            roomList.add(roomData);
+    
+            // 로그 출력
+            System.out.println("=============================");
+            System.out.println("방아이디: " + value.getRoomId() +
+                               ", 룸 네임: " + value.getRoomName() +
+                               ", 총 레인 수: " + value.getLanes() +
+                               ", 참여자 수: " + value.getParticipants().size());
+        }
+    
+        return ResponseEntity.ok(roomList);
+    }
+
+
+    //참가자 조회 API 요청 ROOMiD에 받고 그방에 속해있는 참가자 목록 리턴 
+    // @GetMapping("/room/{roomId}/participants")
+    // public List<> getParticipants(@PathVariable String roomId) {
+       
+    // }
+
+    // 퇴장알림 API
+    //  @PostMapping("/leave/room")
 }

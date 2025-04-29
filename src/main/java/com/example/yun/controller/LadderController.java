@@ -38,8 +38,8 @@ public class LadderController {
     // 순차적인 방 번호를 위한 변수
     private int roomNumber = 1;
 
- // 방마다 클라이언트 연결을 관리할 Map
- private final Map<String, List<SseEmitter>> sseEmitters = new ConcurrentHashMap<>();
+    // 방마다 클라이언트 연결을 관리할 Map
+    private final Map<String, List<SseEmitter>> sseEmitters = new ConcurrentHashMap<>();
 
      // roomId와 당첨 레일을 반환하는 API
     @PostMapping(value ="/create/room") 
@@ -61,12 +61,6 @@ public class LadderController {
      // Map에 방 정보 저장
      roomInfoMap.put(currentRoomNumber, roomInfo);
 
-     //roominfomap 정보 출력
-    for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
-        Integer key = entry.getKey();
-        RoomInfo value = entry.getValue();
-        System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ",총 레인 수 : " + value.getLanes() + ",당첨 레인:  " + value.getWinRailNo() + ", 호스트 닉네임 :  " + value.getHostId() + ", 참여자 :  " +value.getParticipants());
-    }   
 
     RoomResponse response = new RoomResponse(roomId,winRailNo);
 
@@ -123,7 +117,7 @@ public class LadderController {
     public SseEmitter connect(@RequestParam(name = "roomId", required = true) String roomId) {
         logger.info("[SseController] SSE 연결 요청: roomId = {}", roomId);
 
-        // 방에 대한 기존 연결된 클라이언트 목록을 가져옵니다.
+        // 방에 대한 기존 연결된 클라이언트 목록을 가져오기
         List<SseEmitter> emitters = sseEmitters.computeIfAbsent(roomId, k -> new CopyOnWriteArrayList<>());
         
         // 새로운 SSE 연결을 추가
@@ -166,7 +160,7 @@ public class LadderController {
             }
         }
     }
-    
+
     @PostMapping("/send-message")
     public ResponseEntity<String> sendMessageToRoom(@RequestParam String roomId, @RequestParam String message) {
         List<SseEmitter> emitters = sseEmitters.get(roomId); // 방 ID에 해당하는 클라이언트들 가져오기

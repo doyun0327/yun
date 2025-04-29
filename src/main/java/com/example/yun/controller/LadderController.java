@@ -45,7 +45,7 @@ public class LadderController {
      // roomId와 당첨 레일을 반환하는 API
     @PostMapping(value ="/create/room") 
     public ResponseEntity<RoomResponse> checkConnection(@RequestBody RoomRequest roomRequest) {
-e   int currentRoomNumber = roomNumber++;
+    int currentRoomNumber = roomNumber++;
      // 방 ID 생성
     String roomId ="20250428163504";// generateRoomId();
 

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -88,6 +90,7 @@ public class LadderController {
     public String addParticipants(@RequestBody RoomRequest roomRequest) {
         String roomId = roomRequest.getRoomId();
         String nickname = roomRequest.getNickname();
+    
         // 방에 참여자 추가
         RoomInfo roomInfo = null;
         for (RoomInfo info : roomInfoMap.values()) {
@@ -97,43 +100,40 @@ public class LadderController {
             }
         }
         roomInfo.addParticipant(nickname);
-
-        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
-            Integer key = entry.getKey();
-            RoomInfo value = entry.getValue();
-            System.out.println("=============================");
-            System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
-        }  
-
-          // participants 정보를 JSON 형식으로 변환하여 전송할 준비
-          List<Map<String, Object>> participantsList = new ArrayList<>();
-          for (Map.Entry<String, Integer> participant : roomInfo.getParticipants().entrySet()) {
-              Map<String, Object> participantInfo = new HashMap<>();
-              participantInfo.put("nickname", participant.getKey());
-              participantInfo.put("selectedLane", participant.getValue());
-              participantsList.add(participantInfo);
-          }
-
-          // JSON 형식으로 결과 생성
-          String jsonResponse = String.format("{\"roomId\": \"%s\", \"participants\": %s}",
-                  roomInfo.getRoomId(), participantsList.toString());
-
-          logger.info("[LadderController] JSON 응답: {}", jsonResponse);
-
-          // SSE로 해당 방에 관련된 클라이언트에 메시지 전송
-          List<SseEmitter> emitters = sseEmitters.get(roomId); // roomId에 해당하는 모든 클라이언트 가져오기
-          if (emitters != null) {
-              for (SseEmitter emitter : emitters) {
-                  try {
-                      emitter.send(SseEmitter.event().name("participants").data(jsonResponse)); // SSE 이벤트로 데이터 전송
-                  } catch (Exception e) {
-                      e.printStackTrace();
-                  }
-              }
-          }
-
+    
+        // participantsList 준비
+        List<Map<String, Object>> participantsList = new ArrayList<>();
+        for (Map.Entry<String, Integer> participant : roomInfo.getParticipants().entrySet()) {
+            Map<String, Object> participantInfo = new HashMap<>();
+            participantInfo.put("nickname", participant.getKey());
+            participantInfo.put("selectedLane", participant.getValue());
+            participantsList.add(participantInfo);
+        }
+    
+        // roomData 만들기
+        Map<String, Object> roomData = new HashMap<>();
+        roomData.put("roomId", roomInfo.getRoomId());
+        roomData.put("participants", participantsList);
+    
+        logger.info("[LadderController] JSON 응답 객체: {}", roomData);
+    
+        // SSE로 클라이언트들에게 전송
+        List<SseEmitter> emitters = sseEmitters.get(roomId);
+        if (emitters != null) {
+            for (SseEmitter emitter : emitters) {
+                try {
+                    emitter.send(SseEmitter.event()
+                            .name("participants")
+                            .data(roomData)); // 객체 자체를 넘기기!
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    
         return "참여자 등록 완료";
     }
+    
     
 
     @PostMapping("join/room")
@@ -342,6 +342,44 @@ public class LadderController {
 
         return "레인 등록 완료";
     }
+    
+    //방 정보 조회 API
+// 방 정보 조회 API (roomId로 특정 방 조회)
+    @GetMapping("/search/rooms")
+    public ResponseEntity<Map<String, Object>> getRoomById(@RequestParam("roomId") String roomId) {   
+        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+            RoomInfo room = entry.getValue();
+            
+            // roomId가 일치하는 방 찾기
+            if (room.getRoomId().equals(roomId)) {
+                Map<String, Object> roomData = new HashMap<>();
+                roomData.put("roomId", room.getRoomId());
+                roomData.put("roomName", room.getRoomName());
+                roomData.put("attendeeCount", room.getParticipants().size());
+                roomData.put("lanes", room.getLanes());
+                roomData.put("winRailNo", room.getWinRailNo());
+
+                // participants 리스트 생성
+                List<Map<String, Object>> participantsList = new ArrayList<>();
+                for (Map.Entry<String, Integer> participantEntry : room.getParticipants().entrySet()) {
+                    Map<String, Object> participantData = new HashMap<>();
+                    participantData.put("nickname", participantEntry.getKey());
+                    participantData.put("selectedLane", participantEntry.getValue());
+                    participantsList.add(participantData);
+                }
+                roomData.put("participants", participantsList);
+
+                logger.info("[Room Search] 찾은 방 정보: {}", roomData);
+                return ResponseEntity.ok(roomData);
+            }
+        }
+
+        // 못 찾았을 때
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(Collections.singletonMap("message", "Room not found"));
+    }
+
+    
     
 
 

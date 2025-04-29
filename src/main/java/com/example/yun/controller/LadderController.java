@@ -70,16 +70,6 @@ public class LadderController {
      // Map에 방 정보 저장
      roomInfoMap.put(currentRoomNumber, roomInfo);
 
-
-     ///room에 보낼 데이터
-     for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
-        Integer key = entry.getKey();
-        RoomInfo value = entry.getValue();
-        System.out.println("=============================");
-        System.out.println("Key: " + key + ", 방아이디: " +"룸 네임 : "+value.getRoomName()+" 룸아이디 : "+ value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 수수 : " + value.getParticipants().size());
-    }  
-
-
     RoomResponse response = new RoomResponse(roomId,winRailNo);
 
     return ResponseEntity.ok(response);
@@ -110,26 +100,15 @@ public class LadderController {
             participantsList.add(participantInfo);
         }
     
-        // roomData 만들기
+          // roomData 만들기
         Map<String, Object> roomData = new HashMap<>();
         roomData.put("roomId", roomInfo.getRoomId());
         roomData.put("participants", participantsList);
-    
+
         logger.info("[LadderController] JSON 응답 객체: {}", roomData);
-    
-        // SSE로 클라이언트들에게 전송
-        List<SseEmitter> emitters = sseEmitters.get(roomId);
-        if (emitters != null) {
-            for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send(SseEmitter.event()
-                            .name("participants")
-                            .data(roomData)); // 객체 자체를 넘기기!
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
+
+        // 방에 연결된 모든 클라이언트에게 참가자 리스트를 브로드캐스트
+        broadcastMessageToRoom(roomId, roomData); // `broadcastMessageToRoom` 사용
     
         return "참여자 등록 완료";
     }
@@ -161,12 +140,12 @@ public class LadderController {
         // 방에 연결된 모든 클라이언트에게 브로드캐스트
         broadcastMessageToRoom(roomId, nickname + "님이 참여하셨습니다.");
 
-        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
-            Integer key = entry.getKey();
-            RoomInfo value = entry.getValue();
-            System.out.println("=============================");
-            System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
-        }  
+        // for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+        //     Integer key = entry.getKey();
+        //     RoomInfo value = entry.getValue();
+        //     System.out.println("=============================");
+        //     System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
+        // }  
 
         // 응답 본문을 포함한 JSON 반환
         return ResponseEntity.ok("참여완료");
@@ -224,7 +203,7 @@ public class LadderController {
                 try {
                     // 데이터 타입에 맞게 처리
                     if (message instanceof String) {
-                        emitter.send(SseEmitter.event().name("message").data(message)); // 참가 메시지지,퇴장 메시지
+                        emitter.send(SseEmitter.event().name("message").data(message)); // 참가 메시지,퇴장 메시지
                     } else if (message instanceof Map) {
                         emitter.send(SseEmitter.event().name("participants").data(message)); // 참가자 리스트
                     }
@@ -235,27 +214,7 @@ public class LadderController {
         }
     }
 
-
-    @PostMapping("/send-message")
-    public ResponseEntity<String> sendMessageToRoom(@RequestParam String roomId, @RequestParam String message) {
-        List<SseEmitter> emitters = sseEmitters.get(roomId); // 방 ID에 해당하는 클라이언트들 가져오기
-
-        if (emitters != null) {
-            // 방에 연결된 모든 클라이언트에게 메시지 전송
-            for (SseEmitter emitter : emitters) {
-                try {
-                    emitter.send("방 메시지: " + message); // 해당 방의 모든 클라이언트에게 메시지 전송
-                } catch (IOException e) {
-                    emitter.completeWithError(e);
-                }
-            }
-            return ResponseEntity.ok("메시지 전송 성공!");
-        }
-        return ResponseEntity.status(404).body("방을 찾을 수 없습니다.");
-    }
-
     // roomInfoMap에서 방 정보를 가져오는 API
-    // 
     @GetMapping("/rooms")
     public ResponseEntity<List<Map<String, Object>>> getRooms() {
         List<Map<String, Object>> roomList = new ArrayList<>();
@@ -384,7 +343,7 @@ public class LadderController {
                             .body(Collections.singletonMap("message", "Room not found"));
     }
 
-    
+    // 방 퇴장 API
     @PostMapping("/leave/room")
     public String leaveRoom(@RequestBody RoomRequest roomRequest) {
     String roomId = roomRequest.getRoomId();

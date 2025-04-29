@@ -136,7 +136,7 @@ public class LadderController {
     
     
 
-    @PostMapping("join/room")
+    @PostMapping("/join/room")
     public ResponseEntity<String> joinRoom(@RequestBody RoomRequest roomRequest) {
         // 방 ID와 참여자 닉네임을 가져옴
         String roomId = roomRequest.getRoomId();

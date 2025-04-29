@@ -53,11 +53,17 @@ public class LadderController {
     int winRailNo = (int) (Math.random() * roomRequest.getLanes()) + 1;
 
     //방장을 참여자 리스트에 추가
-    List<String> Arra = new ArrayList<>();
-    Arra.add(roomRequest.getNickname());  
+    Map<String, Integer> participants = new HashMap<>();
+    participants.put(roomRequest.getNickname(), null);  // 초기 선택 레인은 null
 
-
-    RoomInfo roomInfo = new RoomInfo(roomId, roomRequest.getLanes(), winRailNo, roomRequest.getNickname(),Arra, roomRequest.getRoomName());
+    RoomInfo roomInfo = new RoomInfo(
+        roomId,
+        roomRequest.getLanes(),
+        winRailNo,
+        roomRequest.getNickname(),
+        participants, 
+        roomRequest.getRoomName()
+    );
 
      // Map에 방 정보 저장
      roomInfoMap.put(currentRoomNumber, roomInfo);
@@ -90,7 +96,7 @@ public class LadderController {
                 break;
             }
         }
-        roomInfo.getParticipants().add(nickname);
+        roomInfo.addParticipant(nickname);
 
         for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
             Integer key = entry.getKey();
@@ -123,7 +129,7 @@ public class LadderController {
         }
 
         // 방에 참여자 추가
-        roomInfo.getParticipants().add(nickname);
+        roomInfo.addParticipant(nickname);
 
         // 방에 연결된 모든 클라이언트에게 브로드캐스트
         broadcastMessageToRoom(roomId, nickname + "님이 참여하셨습니다.");
@@ -242,6 +248,46 @@ public class LadderController {
     
         return ResponseEntity.ok(roomList);
     }
+
+    // 선택 레인 등록(테스트 필요)
+    @GetMapping("/add/lane")
+    public String setSelectedLane(
+            @RequestParam String roomId,
+            @RequestParam String nickname,
+            @RequestParam int selectedLane
+    ) {
+        // roomId로 해당 방을 찾기
+        RoomInfo roomInfo = null;
+        for (RoomInfo info : roomInfoMap.values()) {
+            if (info.getRoomId().equals(roomId)) {
+                roomInfo = info;
+                break;
+            }
+        }
+    
+        if (roomInfo == null) {
+            return "해당 roomId를 찾을 수 없습니다.";
+        }
+    
+        // participants Map에서 nickname이 존재하는지 확인 후 selectedLane 설정
+        Map<String, Integer> participants = roomInfo.getParticipants();
+        if (!participants.containsKey(nickname)) {
+            return "해당 nickname이 참가자 목록에 없습니다.";
+        }
+    
+        participants.put(nickname, selectedLane); 
+
+        for (Map.Entry<Integer, RoomInfo> entry : roomInfoMap.entrySet()) {
+            Integer key = entry.getKey();
+            RoomInfo value = entry.getValue();
+            System.out.println("=============================");
+            System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
+        }  
+    
+        logger.info("[LadderController] 선택 레인 등록 완료: roomId = {}, nickname = {}, selectedLane = {}", roomId, nickname, selectedLane);
+        return "레인 등록 완료";
+    }
+    
 
 
     //참가자 조회 API 요청 ROOMiD에 받고 그방에 속해있는 참가자 목록 리턴 

@@ -252,9 +252,9 @@ public class LadderController {
     // 선택 레인 등록(테스트 필요)
     @GetMapping("/add/lane")
     public String setSelectedLane(
-            @RequestParam String roomId,
-            @RequestParam String nickname,
-            @RequestParam int selectedLane
+            @RequestParam("roomId") String roomId,
+            @RequestParam("nickname") String nickname,
+            @RequestParam("selectedLane") int selectedLane
     ) {
         // roomId로 해당 방을 찾기
         RoomInfo roomInfo = null;
@@ -285,6 +285,34 @@ public class LadderController {
         }  
     
         logger.info("[LadderController] 선택 레인 등록 완료: roomId = {}, nickname = {}, selectedLane = {}", roomId, nickname, selectedLane);
+
+         // participants 정보를 JSON 형식으로 변환하여 전송할 준비
+            List<Map<String, Object>> participantsList = new ArrayList<>();
+            for (Map.Entry<String, Integer> participant : roomInfo.getParticipants().entrySet()) {
+                Map<String, Object> participantInfo = new HashMap<>();
+                participantInfo.put("nickname", participant.getKey());
+                participantInfo.put("selectedLane", participant.getValue());
+                participantsList.add(participantInfo);
+            }
+
+            // JSON 형식으로 결과 생성
+            String jsonResponse = String.format("{\"roomId\": \"%s\", \"participants\": %s}",
+                    roomInfo.getRoomId(), participantsList.toString());
+
+            logger.info("[LadderController] JSON 응답: {}", jsonResponse);
+
+            // SSE로 해당 방에 관련된 클라이언트에 메시지 전송
+            List<SseEmitter> emitters = sseEmitters.get(roomId); // roomId에 해당하는 모든 클라이언트 가져오기
+            if (emitters != null) {
+                for (SseEmitter emitter : emitters) {
+                    try {
+                        emitter.send(SseEmitter.event().name("participants").data(jsonResponse)); // SSE 이벤트로 데이터 전송
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+
         return "레인 등록 완료";
     }
     

@@ -105,6 +105,33 @@ public class LadderController {
             System.out.println("Key: " + key + ", 방아이디: " + value.getRoomId() + ", 총 레인 수 : " + value.getLanes() + ", 당첨 레인: " + value.getWinRailNo() + ", 호스트 닉네임 : " + value.getHostId() + ", 참여자 : " + value.getParticipants());
         }  
 
+          // participants 정보를 JSON 형식으로 변환하여 전송할 준비
+          List<Map<String, Object>> participantsList = new ArrayList<>();
+          for (Map.Entry<String, Integer> participant : roomInfo.getParticipants().entrySet()) {
+              Map<String, Object> participantInfo = new HashMap<>();
+              participantInfo.put("nickname", participant.getKey());
+              participantInfo.put("selectedLane", participant.getValue());
+              participantsList.add(participantInfo);
+          }
+
+          // JSON 형식으로 결과 생성
+          String jsonResponse = String.format("{\"roomId\": \"%s\", \"participants\": %s}",
+                  roomInfo.getRoomId(), participantsList.toString());
+
+          logger.info("[LadderController] JSON 응답: {}", jsonResponse);
+
+          // SSE로 해당 방에 관련된 클라이언트에 메시지 전송
+          List<SseEmitter> emitters = sseEmitters.get(roomId); // roomId에 해당하는 모든 클라이언트 가져오기
+          if (emitters != null) {
+              for (SseEmitter emitter : emitters) {
+                  try {
+                      emitter.send(SseEmitter.event().name("participants").data(jsonResponse)); // SSE 이벤트로 데이터 전송
+                  } catch (Exception e) {
+                      e.printStackTrace();
+                  }
+              }
+          }
+
         return "참여자 등록 완료";
     }
     
